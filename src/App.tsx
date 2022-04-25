@@ -1,5 +1,6 @@
 import { type } from '@testing-library/user-event/dist/type';
 import React from 'react';
+import { createLessThan } from 'typescript';
 
 var XLSX: any;
 if (typeof require !== 'undefined')
@@ -63,6 +64,16 @@ type list = {
 	[key: string]: cell
 }
 
+type dayCells = {
+	i_cell_row_last: number,
+	i_cell_row_first: number
+}
+
+type lessonCells = {
+	i_cell_row_last: number,
+	i_cell_row_first: number
+}
+
 var alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ'];
 
 var pattern = /^[А-Я]+$/;
@@ -75,22 +86,52 @@ var allGroups: allGroups = {};
 
 function App() {
 
-	const checkingMerged = (str: string, num: number) => {
+	// const checkingMerged = (str: string, num: number) => {
+	// 	let merges: merge[] = workSheet['!merges'];
+	// 	let isMergeCell: boolean = false;
+	// 	// num = -1
+	// 	merges.map(el => {
+	// 		if ((el.s.c === alphabet.indexOf(str) && el.e.c === alphabet.indexOf(str)) && (el.s.r === num - 1 && el.e.r === num + 1 - 1) ||
+	// 			(el.s.c === alphabet.indexOf(str) && el.e.c === alphabet.indexOf(str)) && (el.s.r === num - 1 && el.e.r === num + 9 - 1)) {
+	// 			isMergeCell = true
+	// 		}
+	// 	})
+	// 	return isMergeCell
+	// }
+
+	const checkingMerged = (str: string, num1: number, num2: number) => {
 		let merges: merge[] = workSheet['!merges'];
 		let isMergeCell: boolean = false;
 		// num = -1
 		merges.map(el => {
-			if ((el.s.c === alphabet.indexOf(str) && el.e.c === alphabet.indexOf(str)) && (el.s.r === num - 1 && el.e.r === num + 1 - 1) ||
-				(el.s.c === alphabet.indexOf(str) && el.e.c === alphabet.indexOf(str)) && (el.s.r === num - 1 && el.e.r === num + 9 - 1)) {
+			if ((el.s.c === alphabet.indexOf(str) && el.e.c === alphabet.indexOf(str)) && (el.s.r === num1 - 1 && el.e.r === num2 - 1)) {
 				isMergeCell = true
 			}
 		})
 		return isMergeCell
 	}
 
+
+	function checkingGroupCellIsCorrect<N extends number, T extends string>(currentColumn: T, currentRow: N): T {
+		let currentValue: string | undefined = workSheet[currentColumn + currentRow] ? workSheet[currentColumn + currentRow].w : undefined
+
+		let nextCell: number = alphabet.indexOf(currentColumn) + 1;
+		let incorrectData = (currentValue && currentValue.length < 6);
+		let emptyData = (!currentValue && workSheet[alphabet[nextCell] + currentRow] && workSheet[alphabet[nextCell] + currentRow].w.length > 6);
+
+		if (incorrectData || emptyData) {
+			return checkingGroupCellIsCorrect(alphabet[nextCell] as T, currentRow)
+		} else {
+			// console.log(currentColumn)
+			return currentColumn
+		}
+	}
+
 	const defineGroups = () => {
 		for (let curKey in workSheet) {
+
 			let letter: number = 0, num: number = 0;
+
 			if (workSheet[curKey].w && workSheet[curKey].w.length < 10) {
 				for (let i = 0; i <= workSheet[curKey].w.length; i++) {
 					if (pattern.test(workSheet[curKey].w[i])) {
@@ -100,9 +141,11 @@ function App() {
 						num++;
 				}
 			}
+
 			if (letter != 0 && num != 0 && letter < 5 && num < 5) {
 				// allGroups[workSheet[curKey].w]._debagProps._referenceKey = curKey;
 				let referСell_number: string = '', referСell_letter: string = '';
+
 				for (let i = 0; i <= curKey.length; i++) {
 					if (patternEng.test(curKey[i])) {
 						referСell_letter += curKey[i]
@@ -113,11 +156,12 @@ function App() {
 					if (curKey.length - i === 1)
 						break
 				}
+				let correctColumn = checkingGroupCellIsCorrect(referСell_letter, +referСell_number + 1)
+				referСell_letter = correctColumn ? correctColumn : referСell_letter
+				console.log(referСell_letter + referСell_number + " " + workSheet[curKey].w)
 				allGroups[workSheet[curKey].w] = defineSchedule(referСell_letter, referСell_number, workSheet[curKey].w);
 			}
 		}
-
-
 	}
 
 	const defineSchedule = (referСell_letter: string, referСell_number: string, group: string) => {
@@ -125,41 +169,60 @@ function App() {
 			_debagProps: { _referenceKey: undefined, _referenceKey_isСorrect: undefined },
 			days: [undefined, undefined, undefined, undefined, undefined, undefined]
 		};
-		// var grops: allGroups = {};
 		let iCurrentWeekDay = 0;
-		for (let iDay = +referСell_number + 1; iDay <= +referСell_number + 60; iDay += 10) {
-			stydyWeek.days[iCurrentWeekDay] = defineDay(iDay, referСell_letter, referСell_number, group, iCurrentWeekDay)
+
+		let i_letter = alphabet.indexOf(referСell_letter);
+
+		let cellsOfDays: dayCells[] = [{ i_cell_row_first: 0, i_cell_row_last: 0 }];
+		let i_day = 0;
+		let i_cell_row = +referСell_number + 1;
+		let i_cell_row_last = +referСell_number + 20;
+
+		for (let i_cell_column = i_letter - 1; i_cell_column >= 0; i_cell_column--) {
+			while (i_cell_row_last > i_cell_row) {
+				for (let i_cell_row_first = i_cell_row; i_cell_row_first <= i_cell_row + 5; i_cell_row_first++) {
+					var isMerged = checkingMerged(alphabet[i_cell_column], i_cell_row_first, i_cell_row_last),
+						isCellLong = i_cell_row_last - i_cell_row_first > 6,
+						isCellExists = workSheet[alphabet[i_cell_column] + i_cell_row_first] != undefined,
+						isNotMD = isCellExists && workSheet[alphabet[i_cell_column] + i_cell_row_first].w != "ВОЕННАЯ КАФЕДРА"
+
+					if (isMerged && isCellLong && isCellExists && isNotMD) {
+						cellsOfDays[i_day] = { i_cell_row_first, i_cell_row_last }; i_day++
+						i_cell_row = i_cell_row_last + 1
+						i_cell_row_last += 20
+						break
+					}
+				}
+				i_cell_row_last--;
+			}
+			i_cell_row_last = +referСell_number + 20
+		}
+
+		cellsOfDays.map((day: dayCells) => {
+			stydyWeek.days[iCurrentWeekDay] = defineDay(day, referСell_letter, referСell_number, group, iCurrentWeekDay)
 			iCurrentWeekDay++;
+		})
+		for (let iDay = +referСell_number + 1; iDay <= +referСell_number + 60; iDay += 10) {
+
 		}
 
 		return stydyWeek;
 	}
 
-	const defineDay = (referDay: number, referСell_letter: string, referСell_number: string, group: string, weekDay: number) => {
+	const defineDay = (rangeCells: dayCells, referСell_letter: string, referСell_number: string, group: string, weekDay: number) => {
 		var stydyDay: stydyDay = {
 			lessons: [undefined, undefined, undefined, undefined, undefined,]
 		};
-		let iCurrentDay = 0;
-		for (let iLesson = referDay; iLesson < referDay + 10; iLesson += 2) {
-			let currentValue: string | undefined = workSheet[referСell_letter + iLesson] ? workSheet[referСell_letter + iLesson].w : undefined;
-			let nextCell: number = alphabet.indexOf(referСell_letter) + 1;
 
-			let incorrectData = (currentValue && currentValue.length < 6);
-			let emptyData = (!currentValue && workSheet[alphabet[nextCell] + iLesson] && workSheet[alphabet[nextCell] + iLesson].w.length > 6);
-
-			if (incorrectData || emptyData) {
-				let newStr = alphabet.indexOf(referСell_letter);
-				referСell_letter = alphabet[newStr + 1];
-				iLesson = referDay - 2;
-				// 	// if (isMerged(startStrVal, i, workSheet['!merges']))
-				// 	// 	console.log('ЯЧЕЙКА ЕДИНА')
-				// 	// !!! error
-			} else {
-				// allGroups[group]._debagProps._referenceKey_isСorrect = referСell_letter;
-
-				stydyDay.lessons[iCurrentDay] = defineLesson(iLesson, referСell_letter, group, weekDay, currentValue)
-				iCurrentDay++;
-			}
+		let column_lesson = alphabet[+referСell_letter - 1], column_cabinet = alphabet[+referСell_letter + 1]
+		let cellsOfLesson: any, i_lesson = 0
+		for (let i_cell = rangeCells.i_cell_row_first; i_cell <= rangeCells.i_cell_row_last; i_cell++) {
+			for (let i_cell_last = i_cell + 1; i_cell_last <= i_cell + 5; i_cell_last++)
+				if (checkingMerged(column_lesson, i_cell, i_cell_last)) {
+					cellsOfLesson[i_lesson] = { i_cell, i_cell_last }
+					i_lesson++
+					break
+				}
 		}
 		return stydyDay
 	}
