@@ -35,13 +35,13 @@ type stydyDay = {
 	]
 }
 type lessonInfo = {
-	title?: string
-	type?: string
+	title?: string;
+	cabinet?: string;
 	teacherInfo?: {
-		name: string
-		degree: string
-	}
-	cabinet?: string
+		name: string | undefined;
+		degree: string | undefined;
+	};
+	type?: string | undefined;
 }
 type lesson = {
 	_debagProps: {
@@ -215,47 +215,47 @@ function App() {
 		return stydyDay
 	}
 
-	const getOtherInfo = (str: string): [nameTeacher: string, degree: string, typeLesson: string] => {
-		let surname = /^[А-Я][а-я]{1,20}\s[А-Я]\.[А-Я]\.$/
-		let nameTeacher: string = ''
-		let degree: string = ''
-		let typeLesson: string = ''
+	// const getOtherInfo = (str: string): [nameTeacher: string, degree: string, typeLesson: string] => {
+	// 	let surname = /^[А-Я][а-я]{1,20}\s[А-Я]\.[А-Я]\.$/
+	// 	let nameTeacher: string = ''
+	// 	let degree: string = ''
+	// 	let typeLesson: string = ''
 
-		let i_degree: number = 0, i_type_lesson: number = 0;
+	// 	let i_degree: number = 0, i_type_lesson: number = 0;
 
-		for (let i_char_start = 0; i_char_start <= str.length; i_char_start++) {
-			let stop: boolean = false
+	// 	for (let i_char_start = 0; i_char_start <= str.length; i_char_start++) {
+	// 		let stop: boolean = false
 
-			for (let i_char_end = str.length; i_char_end >= 1; i_char_end--) {
-				let currentPhrase: string = '';
+	// 		for (let i_char_end = str.length; i_char_end >= 1; i_char_end--) {
+	// 			let currentPhrase: string = '';
 
-				for (let i = i_char_start; i <= i_char_end; i++) {
-					currentPhrase += str[i]
-				}
-				if (surname.test(currentPhrase)) {
-					nameTeacher = currentPhrase
-					i_degree = i_char_start
-					i_type_lesson = i_char_end
-					stop = true
-				}
-			}
+	// 			for (let i = i_char_start; i <= i_char_end; i++) {
+	// 				currentPhrase += str[i]
+	// 			}
+	// 			if (surname.test(currentPhrase)) {
+	// 				nameTeacher = currentPhrase
+	// 				i_degree = i_char_start
+	// 				i_type_lesson = i_char_end
+	// 				stop = true
+	// 			}
+	// 		}
 
-			if (stop === true)
-				break
-		}
+	// 		if (stop === true)
+	// 			break
+	// 	}
 
-		for (let i = 0; i <= i_degree - 1; i++) {
-			degree += str[i]
-		}
+	// 	for (let i = 0; i <= i_degree - 1; i++) {
+	// 		degree += str[i]
+	// 	}
 
-		for (let i = i_type_lesson + 1; i <= str.length; i++) {
-			str[i] && (typeLesson += str[i])
-		}
+	// 	for (let i = i_type_lesson + 1; i <= str.length; i++) {
+	// 		str[i] && (typeLesson += str[i])
+	// 	}
 
-		return [nameTeacher, degree.trim(), typeLesson.trim()]
-	}
+	// 	return [nameTeacher, degree.trim(), typeLesson.trim()]
+	// }
 
-	const getAllInfo = (str: string): [title: string, nameTeacher: string, degree: string, typeLesson: string] => {
+	const getAllInfo = (str: string): [title: string, nameTeacher: string, degree: string, typeLesson: string] | [] => {
 		let surname = /^[А-Я][а-я]{1,20}\s[А-Я]\.[А-Я]\.$/
 
 		let title: string = ''
@@ -265,8 +265,9 @@ function App() {
 
 		let i_degree: number = 0, i_type_lesson: number = 0;
 
+		let stop: boolean = false
+
 		for (let i_char_start = 0; i_char_start <= str.length; i_char_start++) {
-			let stop: boolean = false
 
 			for (let i_char_end = str.length; i_char_end >= 1; i_char_end--) {
 				let currentPhrase: string = '';
@@ -284,6 +285,10 @@ function App() {
 
 			if (stop === true)
 				break
+		}
+
+		if (stop === false) {
+			return []
 		}
 
 		let i_first_t = str.indexOf('.');
@@ -310,62 +315,97 @@ function App() {
 		return [title, nameTeacher, degree.trim(), typeLesson.trim()]
 	}
 
+	type propsLessonType = {
+		mainCell: string | undefined, cellInfo: string | undefined, cabinet_fCell: string | undefined, cabinet_sCell: string | undefined
+	}
+
+	const lessonDefault = (props: propsLessonType) => {
+		let [title, name, degree, type] = props.cellInfo ? getAllInfo(props.cellInfo) : [];
+		return {
+			title: props.mainCell,
+			cabinet: props.cabinet_fCell ? props.cabinet_fCell : props.cabinet_sCell,
+			teacherInfo: { name, degree },
+			type
+		}
+	}
+
+	const lessonSeparation = (props: propsLessonType) => {
+		let [titleTop, nameTop, degreeTop, typeTop] = props.mainCell ? getAllInfo(props.mainCell) : [];
+		let [titleLower, nameLower, degreeLower, typeLower] = props.cellInfo ? getAllInfo(props.cellInfo) : [];
+		return [{
+			title: titleTop,
+			type: typeTop,
+			cabinet: props.cabinet_fCell ? props.cabinet_fCell : props.cabinet_sCell,
+			teacherInfo: {
+				name: nameTop,
+				degree: degreeTop
+			}
+		},
+		{
+			title: titleLower,
+			type: typeLower,
+			cabinet: props.cabinet_sCell ? props.cabinet_sCell : props.cabinet_fCell,
+			teacherInfo: {
+				name: nameLower,
+				degree: degreeLower
+			}
+		}]
+	}
+
 	const defineLesson = (referLesson: dayCells, referСell_letter: string) => {
 		let lesson: lesson = { _debagProps: { _fullСontentСell: '' }, data: { topWeek: {} } };
 		// referLesson += 1;
 		let column_cabinet = alphabet[alphabet.indexOf(referСell_letter) + 1]
 
-		let currentLesson: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_first] ? workSheet[referСell_letter + referLesson.i_cell_row_first].w : undefined;
-		let currentTeacher: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_last] ? workSheet[referСell_letter + referLesson.i_cell_row_last].w : undefined;
+		let firstCell: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_first] ? workSheet[referСell_letter + referLesson.i_cell_row_first].w : undefined;
+		let secondCell: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_last] ? workSheet[referСell_letter + referLesson.i_cell_row_last].w : undefined;
 
-		if (checkingMerged(column_cabinet, referLesson.i_cell_row_first, referLesson.i_cell_row_last) && (currentLesson && currentTeacher)) {
-			let currentCabinet: string | undefined = workSheet[column_cabinet + referLesson.i_cell_row_first] ? workSheet[column_cabinet + referLesson.i_cell_row_first].w : undefined;
+		let cabinet_firstCell: string | undefined = workSheet[column_cabinet + referLesson.i_cell_row_first] ? workSheet[column_cabinet + referLesson.i_cell_row_first].w : undefined;
+		let cabinet_secondCell: string | undefined = workSheet[column_cabinet + referLesson.i_cell_row_last] ? workSheet[column_cabinet + referLesson.i_cell_row_last].w : undefined;
+
+		let propsLesson = { mainCell: firstCell, cellInfo: secondCell, cabinet_fCell: cabinet_firstCell, cabinet_sCell: cabinet_secondCell }
 
 
-			let otherData = currentTeacher ? getOtherInfo(currentTeacher) : [];
-			lesson.data.topWeek && (lesson.data.topWeek = {
-				title: currentLesson,
-				cabinet: currentCabinet,
-				teacherInfo: { name: otherData[0], degree: otherData[1] },
-				type: otherData[2]
-			})
+		if (checkingMerged(column_cabinet, referLesson.i_cell_row_first, referLesson.i_cell_row_last) && (firstCell && secondCell)
+		) {
+			if (getAllInfo(firstCell).length > 0) {
+				[lesson.data.topWeek, lesson.data.lowerWeek] = lessonSeparation(propsLesson)
+			} else {
+				lesson.data.topWeek = lessonDefault(propsLesson)
+			}
 
 		} else {
-			let currentCabinetTop: string | undefined = workSheet[column_cabinet + referLesson.i_cell_row_first] ? workSheet[column_cabinet + referLesson.i_cell_row_first].w : undefined;
-			let currentCabinetLower: string | undefined = workSheet[column_cabinet + referLesson.i_cell_row_last] ? workSheet[column_cabinet + referLesson.i_cell_row_last].w : undefined;
+			if (firstCell && getAllInfo(firstCell) === undefined) {
+				lesson.data.topWeek = lessonDefault(propsLesson)
+			} else
+				[lesson.data.topWeek, lesson.data.lowerWeek] = lessonSeparation(propsLesson)
 
-			let currentDataTop: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_first] ? workSheet[referСell_letter + referLesson.i_cell_row_first].w : undefined;
-			let currentDataLower: string | undefined = workSheet[referСell_letter + referLesson.i_cell_row_last] ? workSheet[referСell_letter + referLesson.i_cell_row_last].w : undefined;
+			// if (firstCell && dataTop)
+			// 	lesson.data.topWeek = {
+			// 		title: dataTop[0],
+			// 		type: dataTop[3],
+			// 		teacherInfo: {
+			// 			name: dataTop[1],
+			// 			degree: dataTop[2]
+			// 		}
+			// 	}
+			// else
+			// 	lesson.data.topWeek = undefined
 
-			let dataTop = currentDataTop ? getAllInfo(currentDataTop) : [];
-			let dataLower = currentDataLower ? getAllInfo(currentDataLower) : [];
+			// if (secondCell && dataLower)
+			// 	lesson.data.lowerWeek = {
+			// 		title: dataLower[0],
+			// 		type: dataLower[3],
+			// 		teacherInfo: {
+			// 			name: dataLower[1],
+			// 			degree: dataLower[2]
+			// 		}
+			// 	}
+			// else
+			// 	lesson.data.lowerWeek = undefined
 
-			if (currentDataTop)
-				lesson.data.topWeek = {
-					title: dataTop[0],
-					type: dataTop[3],
-					teacherInfo: {
-						name: dataTop[1],
-						degree: dataTop[2]
-					}
-				}
-			else
-				lesson.data.topWeek = undefined
-
-			if (currentDataLower)
-				lesson.data.lowerWeek = {
-					title: dataLower[0],
-					type: dataLower[3],
-					teacherInfo: {
-						name: dataLower[1],
-						degree: dataLower[2]
-					}
-				}
-			else
-				lesson.data.lowerWeek = undefined
-
-			lesson.data.topWeek && (lesson.data.topWeek.cabinet = currentCabinetTop ? currentCabinetTop : undefined);
-			lesson.data.lowerWeek && (lesson.data.lowerWeek.cabinet = currentCabinetLower ? currentCabinetLower : undefined);
+			// lesson.data.topWeek && (lesson.data.topWeek.cabinet = cabinet_firstCell ? cabinet_firstCell : undefined);
+			// lesson.data.lowerWeek && (lesson.data.lowerWeek.cabinet = cabinet_secondCell ? cabinet_secondCell : undefined);
 		}
 		return lesson;
 	}
